@@ -13,6 +13,10 @@ import java.util.HexFormat;
 
 /** Recherche naïve d'un mot à partir de son condensat SHA-256. */
 public class Main {
+    private static final long TIMEOUT_NANOS =
+            Long.getLong("hashbreaker.timeoutSeconds", 60L) * 1_000_000_000L;
+    private static final String ASCII_BASE = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
     /** Lance les douze cas du dictionnaire sans arguments, ou une recherche personnalisée. */
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
@@ -21,7 +25,7 @@ public class Main {
             if (args.length == 0) {
                 runDictionary();
             } else if (args.length == 3) {
-                run(args[0], args[1], Integer.parseInt(args[2]));
+                run(args[0], args[1], 1, Integer.parseInt(args[2]), null);
             } else {
                 System.err.println("Usage : java fr.brex.Main [<sha256-hex> <alphabet> <longueur-max>]");
             }
@@ -43,31 +47,31 @@ public class Main {
             int count = 0;
             while ((line = reader.readLine()) != null) {
                 String[] entry = line.split(";", -1);
-                if (entry.length != 4) {
+                if (entry.length != 5) {
                     throw new IllegalArgumentException("Ligne CSV invalide : " + line);
                 }
                 System.out.printf("Cas %d : ", ++count);
-                String found = run(entry[1], entry[2], Integer.parseInt(entry[3]));
-                if (!entry[0].equals(found)) {
-                    throw new AssertionError("Mot attendu : " + entry[0] + ", trouvé : " + found);
-                }
+                run(entry[1], entry[2], Integer.parseInt(entry[3]), Integer.parseInt(entry[4]), entry[0]);
             }
         }
     }
 
-    /** Mesure le temps de recherche et affiche le mot trouvé, s'il existe. */
-    private static String run(String targetHex, String alphabet, int maxLength)
+    /** Mesure une recherche et affiche son résultat, y compris si elle atteint le délai. */
+    private static void run(String targetHex, String alphabet, int minLength, int maxLength, String expected)
             throws NoSuchAlgorithmException {
+        alphabet = resolveAlphabet(alphabet);
         SearchCounter counter = new SearchCounter();
-        long start = System.nanoTime();
-        String result = crack(targetHex, alphabet, maxLength, counter);
-        double milliseconds = (System.nanoTime() - start) / 1_000_000.0;
+        String result = crack(targetHex, alphabet, minLength, maxLength, counter);
+        double milliseconds = (System.nanoTime() - counter.startedAt) / 1_000_000.0;
         long alphabetSize = alphabet.codePoints().distinct().count();
-        System.out.printf("%s (alphabet : %d symbole%s, %d candidat%s, %.3f ms)%n",
-                result == null ? "Aucune correspondance" : "Mot trouvé : " + result,
+        String status = counter.timedOut ? "Timeout" : result == null ? "Aucune correspondance" : "Mot trouvé : " + result;
+        System.out.printf("%s (longueurs : %d-%d, alphabet : %d symbole%s, %d candidat%s, %.3f ms)%n",
+                status, minLength, maxLength,
                 alphabetSize, alphabetSize == 1 ? "" : "s",
                 counter.candidates, counter.candidates == 1 ? "" : "s", milliseconds);
-        return result;
+        if (!counter.timedOut && expected != null && !expected.equals(result)) {
+            throw new AssertionError("Mot attendu : " + expected + ", trouvé : " + result);
+        }
     }
 
     /**
@@ -80,13 +84,19 @@ public class Main {
      */
     static String crack(String targetHex, String alphabet, int maxLength)
             throws NoSuchAlgorithmException {
-        return crack(targetHex, alphabet, maxLength, new SearchCounter());
+        return crack(targetHex, alphabet, 1, maxLength);
     }
 
-    private static String crack(String targetHex, String alphabet, int maxLength, SearchCounter counter)
+    static String crack(String targetHex, String alphabet, int minLength, int maxLength)
             throws NoSuchAlgorithmException {
-        if (alphabet.isEmpty() || maxLength < 1) {
-            throw new IllegalArgumentException("L'alphabet doit être non vide et la longueur maximale positive");
+        return crack(targetHex, alphabet, minLength, maxLength, new SearchCounter());
+    }
+
+    private static String crack(String targetHex, String alphabet, int minLength, int maxLength, SearchCounter counter)
+            throws NoSuchAlgorithmException {
+        alphabet = resolveAlphabet(alphabet);
+        if (alphabet.isEmpty() || minLength < 1 || maxLength < minLength) {
+            throw new IllegalArgumentException("L'alphabet doit être non vide et les longueurs valides");
         }
         if (targetHex.length() != 64) {
             throw new IllegalArgumentException("Le SHA-256 doit contenir 64 caractères hexadécimaux");
@@ -98,9 +108,9 @@ public class Main {
         MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
 
         // ponytail: parcours séquentiel sans parallélisme ; mesurer cette base avant d'optimiser.
-        for (int length = 1; length <= maxLength; length++) {
+        for (int length = minLength; length <= maxLength; length++) {
             String found = enumerateAndCheck(new int[length], 0, symbols, target, sha256, counter);
-            if (found != null) {
+            if (found != null || counter.timedOut) {
                 return found;
             }
         }
@@ -111,6 +121,12 @@ public class Main {
     private static String enumerateAndCheck(int[] candidate, int position, int[] symbols,
                                             byte[] target, MessageDigest sha256, SearchCounter counter) {
         if (position == candidate.length) {
+            // Vérifier l'horloge tous les 1024 candidats limite le coût du timeout.
+            if ((counter.candidates & 1023) == 0
+                    && System.nanoTime() - counter.startedAt >= TIMEOUT_NANOS) {
+                counter.timedOut = true;
+                return null;
+            }
             String word = new String(candidate, 0, candidate.length);
             // SHA-256 s'applique aux octets UTF-8 du mot, pas directement aux caractères Java.
             counter.candidates++;
@@ -122,15 +138,31 @@ public class Main {
         for (int symbol : symbols) {
             candidate[position] = symbol;
             String found = enumerateAndCheck(candidate, position + 1, symbols, target, sha256, counter);
-            if (found != null) {
+            if (found != null || counter.timedOut) {
                 return found;
             }
         }
         return null;
     }
 
+    /** Étend le marqueur du CSV aux 128 caractères ASCII, sans en omettre les contrôles. */
+    static String resolveAlphabet(String alphabet) {
+        if (!alphabet.equals("ASCII_UTF8")) {
+            return alphabet;
+        }
+        StringBuilder ascii = new StringBuilder(ASCII_BASE);
+        for (int codePoint = 0; codePoint < 128; codePoint++) {
+            if (ASCII_BASE.indexOf(codePoint) < 0) {
+                ascii.append((char) codePoint);
+            }
+        }
+        return ascii.toString();
+    }
+
     /** Compte les candidats réellement hachés pendant une recherche. */
     private static class SearchCounter {
+        final long startedAt = System.nanoTime();
         long candidates;
+        boolean timedOut;
     }
 }

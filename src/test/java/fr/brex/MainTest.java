@@ -7,6 +7,16 @@ import java.nio.charset.StandardCharsets;
 
 public class MainTest {
     public static void main(String[] args) throws Exception {
+        String ascii = Main.resolveAlphabet("ASCII_UTF8");
+        if (ascii.length() != 128) {
+            throw new AssertionError("L'alphabet doit contenir les 128 caractères ASCII");
+        }
+        for (int codePoint = 0; codePoint < 128; codePoint++) {
+            if (ascii.indexOf(codePoint) < 0) {
+                throw new AssertionError("Caractère ASCII manquant : " + codePoint);
+            }
+        }
+
         InputStream input = MainTest.class.getResourceAsStream("/dictionnaire-sha256.csv");
         if (input == null) {
             throw new AssertionError("Dictionnaire de test introuvable");
@@ -18,10 +28,11 @@ public class MainTest {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] entry = line.split(";", -1);
-                if (entry.length != 4) {
+                if (entry.length != 5) {
                     throw new AssertionError("Ligne CSV invalide : " + line);
                 }
-                String found = Main.crack(entry[1], entry[2], Integer.parseInt(entry[3]));
+                String found = Main.crack(entry[1], entry[2],
+                        Integer.parseInt(entry[3]), Integer.parseInt(entry[4]));
                 if (!entry[0].equals(found)) {
                     throw new AssertionError("Mot attendu : " + entry[0] + ", trouvé : " + found);
                 }
