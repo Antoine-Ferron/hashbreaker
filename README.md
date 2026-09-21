@@ -1,6 +1,6 @@
 # HashBreaker — version naïve
 
-Le programme énumère les candidats de longueur 1 à la longueur maximale, dans l'ordre de l'alphabet fourni. Il calcule le SHA-256 des octets **UTF-8** de chaque candidat et s'arrête au premier condensat correspondant. Il utilise un seul fil d'exécution.
+Le programme énumère les candidats de longueur 1 à la longueur maximale, dans l'ordre de l'alphabet fourni. Il calcule le SHA-256 des octets **UTF-8** de chaque candidat et s'arrête au premier condensat correspondant. Il affiche la taille de l'alphabet, le nombre de candidats réellement hachés et le temps en millisecondes. Il utilise un seul fil d'exécution.
 
 ## Énumération et dictionnaire de test
 
@@ -25,13 +25,15 @@ java -cp target/classes fr.brex.Main BD7D0EA8CF7ADE4A446BA4EFC46FD99071EC3F42377
 
 Les deux condensats correspondent respectivement à `z3D` et `Sh3n`. L'alphabet contient 62 caractères, dans l'ordre indiqué ci-dessus. La mesure commence avant la préparation du condensat et se termine dès que le mot est trouvé ; elle exclut le démarrage de la JVM.
 
+Les temps des cas courts sont dominés par l'initialisation. Pour les cas de 5 à 8 caractères, l'alphabet contient 10 symboles. Le cas de 8 caractères s'arrête après **14 680 814** condensats calculés, alors qu'un parcours complet des longueurs 1 à 8 en demanderait **111 111 110**. La position du mot dans l'ordre de l'alphabet influence donc directement la durée.
+
 ## Référence mesurée
 
-Windows 11, Java 25.0.3, trois exécutions indépendantes par mot :
+Windows 11, Java 25.0.3, trois exécutions indépendantes par mot avec le compteur de candidats :
 
-| Mot | Essai 1 | Essai 2 | Essai 3 | Médiane |
-| --- | ---: | ---: | ---: | ---: |
-| `z3D` | 0,048 s | 0,046 s | 0,050 s | **0,048 s** |
-| `Sh3n` | 0,846 s | 0,879 s | 0,820 s | **0,846 s** |
+| Mot | Candidats | Essai 1 | Essai 2 | Essai 3 | Médiane |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `z3D` | 103 446 | 49,651 ms | 47,454 ms | 44,788 ms | **47,454 ms** |
+| `Sh3n` | 10 758 998 | 823,289 ms | 813,764 ms | 828,053 ms | **823,289 ms** |
 
 Ces temps sont propres à cette machine et à cet ordre d'énumération. Pour comparer une optimisation, conserver les mêmes condensats, alphabet et longueurs, puis refaire plusieurs mesures dans les mêmes conditions.

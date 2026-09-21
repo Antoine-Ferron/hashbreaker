@@ -58,12 +58,15 @@ public class Main {
     /** Mesure le temps de recherche et affiche le mot trouvé, s'il existe. */
     private static String run(String targetHex, String alphabet, int maxLength)
             throws NoSuchAlgorithmException {
+        SearchCounter counter = new SearchCounter();
         long start = System.nanoTime();
-        String result = crack(targetHex, alphabet, maxLength);
-        double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
-        System.out.printf("%s (%.3f s)%n",
+        String result = crack(targetHex, alphabet, maxLength, counter);
+        double milliseconds = (System.nanoTime() - start) / 1_000_000.0;
+        long alphabetSize = alphabet.codePoints().distinct().count();
+        System.out.printf("%s (alphabet : %d symbole%s, %d candidat%s, %.3f ms)%n",
                 result == null ? "Aucune correspondance" : "Mot trouvé : " + result,
-                seconds);
+                alphabetSize, alphabetSize == 1 ? "" : "s",
+                counter.candidates, counter.candidates == 1 ? "" : "s", milliseconds);
         return result;
     }
 
@@ -76,6 +79,11 @@ public class Main {
      * @return le premier mot dont le condensat correspond, ou {@code null} si aucun ne correspond
      */
     static String crack(String targetHex, String alphabet, int maxLength)
+            throws NoSuchAlgorithmException {
+        return crack(targetHex, alphabet, maxLength, new SearchCounter());
+    }
+
+    private static String crack(String targetHex, String alphabet, int maxLength, SearchCounter counter)
             throws NoSuchAlgorithmException {
         if (alphabet.isEmpty() || maxLength < 1) {
             throw new IllegalArgumentException("L'alphabet doit être non vide et la longueur maximale positive");
@@ -91,7 +99,7 @@ public class Main {
 
         // ponytail: parcours séquentiel sans parallélisme ; mesurer cette base avant d'optimiser.
         for (int length = 1; length <= maxLength; length++) {
-            String found = enumerateAndCheck(new int[length], 0, symbols, target, sha256);
+            String found = enumerateAndCheck(new int[length], 0, symbols, target, sha256, counter);
             if (found != null) {
                 return found;
             }
@@ -101,10 +109,11 @@ public class Main {
 
     /** Énumère les combinaisons en remplissant le candidat de gauche à droite. */
     private static String enumerateAndCheck(int[] candidate, int position, int[] symbols,
-                                            byte[] target, MessageDigest sha256) {
+                                            byte[] target, MessageDigest sha256, SearchCounter counter) {
         if (position == candidate.length) {
             String word = new String(candidate, 0, candidate.length);
             // SHA-256 s'applique aux octets UTF-8 du mot, pas directement aux caractères Java.
+            counter.candidates++;
             byte[] hash = sha256.digest(word.getBytes(StandardCharsets.UTF_8));
             return Arrays.equals(hash, target) ? word : null;
         }
@@ -112,11 +121,16 @@ public class Main {
         // Chaque appel fixe un symbole supplémentaire, jusqu'à former un mot complet.
         for (int symbol : symbols) {
             candidate[position] = symbol;
-            String found = enumerateAndCheck(candidate, position + 1, symbols, target, sha256);
+            String found = enumerateAndCheck(candidate, position + 1, symbols, target, sha256, counter);
             if (found != null) {
                 return found;
             }
         }
         return null;
+    }
+
+    /** Compte les candidats réellement hachés pendant une recherche. */
+    private static class SearchCounter {
+        long candidates;
     }
 }
