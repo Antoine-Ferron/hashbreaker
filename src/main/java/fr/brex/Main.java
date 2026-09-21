@@ -7,13 +7,16 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HexFormat;
 
+/** Recherche naïve d'un mot à partir de son condensat SHA-256. */
 public class Main {
+    /** Lance les deux cas du TP sans arguments, ou une recherche personnalisée avec trois arguments. */
     public static void main(String[] args) throws NoSuchAlgorithmException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
         try {
             if (args.length == 0) {
                 String alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                // Condensats SHA-256 des deux mots du TP, recherchés dans cet ordre.
                 run("A532CA5E11E2B06CCC911E0D962A4864CDB87DA05723F3A050A376D0F0895E63", alphabet, 3);
                 run("BD7D0EA8CF7ADE4A446BA4EFC46FD99071EC3F423770991AC51F70EC5A894DC7", alphabet, 4);
             } else if (args.length == 3) {
@@ -26,6 +29,7 @@ public class Main {
         }
     }
 
+    /** Mesure le temps de recherche et affiche le mot trouvé, s'il existe. */
     private static void run(String targetHex, String alphabet, int maxLength)
             throws NoSuchAlgorithmException {
         long start = System.nanoTime();
@@ -36,6 +40,14 @@ public class Main {
                 seconds);
     }
 
+    /**
+     * Essaie tous les mots de longueur 1 à {@code maxLength}, dans l'ordre de l'alphabet.
+     *
+     * @param targetHex condensat SHA-256 à retrouver, sous forme de 64 caractères hexadécimaux
+     * @param alphabet caractères autorisés dans les mots candidats
+     * @param maxLength longueur maximale des mots candidats
+     * @return le premier mot dont le condensat correspond, ou {@code null} si aucun ne correspond
+     */
     static String crack(String targetHex, String alphabet, int maxLength)
             throws NoSuchAlgorithmException {
         if (alphabet.isEmpty() || maxLength < 1) {
@@ -46,6 +58,7 @@ public class Main {
         }
 
         byte[] target = HexFormat.of().parseHex(targetHex);
+        // Un point de code représente aussi les caractères hors du plan Unicode de base.
         int[] symbols = alphabet.codePoints().distinct().toArray();
         MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
 
@@ -59,14 +72,17 @@ public class Main {
         return null;
     }
 
+    /** Remplit le candidat de gauche à droite ; à la dernière position, compare son SHA-256. */
     private static String search(int[] candidate, int position, int[] symbols,
                                  byte[] target, MessageDigest sha256) {
         if (position == candidate.length) {
             String word = new String(candidate, 0, candidate.length);
+            // SHA-256 s'applique aux octets UTF-8 du mot, pas directement aux caractères Java.
             byte[] hash = sha256.digest(word.getBytes(StandardCharsets.UTF_8));
             return Arrays.equals(hash, target) ? word : null;
         }
 
+        // Chaque appel fixe un symbole supplémentaire, jusqu'à former un mot complet.
         for (int symbol : symbols) {
             candidate[position] = symbol;
             String found = search(candidate, position + 1, symbols, target, sha256);
