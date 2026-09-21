@@ -33,8 +33,8 @@ public class MainTest {
         if (Main.crack(abcHash, "ab", 3) != null) {
             throw new AssertionError("Aucun mot ne doit être trouvé sans c");
         }
-        if (count != 8) {
-            throw new AssertionError("Le dictionnaire doit contenir huit cas, trouvé : " + count);
+        if (count != 12) {
+            throw new AssertionError("Le dictionnaire doit contenir douze cas, trouvé : " + count);
         }
         System.out.println(count + " cas valides");
     }

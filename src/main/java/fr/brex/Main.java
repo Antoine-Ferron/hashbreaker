@@ -13,7 +13,7 @@ import java.util.HexFormat;
 
 /** Recherche naïve d'un mot à partir de son condensat SHA-256. */
 public class Main {
-    /** Lance les huit cas du dictionnaire sans arguments, ou une recherche personnalisée. */
+    /** Lance les douze cas du dictionnaire sans arguments, ou une recherche personnalisée. */
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));

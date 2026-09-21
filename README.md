@@ -6,11 +6,11 @@ Le programme énumère les candidats de longueur 1 à la longueur maximale, dans
 
 La boucle de `crack` choisit successivement la longueur des candidats. La méthode récursive `enumerateAndCheck` essaie chaque symbole de l'alphabet à chaque position. Une fois le mot complet, elle calcule et compare son SHA-256. Il n'y a pas de type `enum` Java : l'alphabet est choisi à l'exécution.
 
-Le fichier [dictionnaire-sha256.csv](src/main/resources/dictionnaire-sha256.csv) contient huit exemples avec le mot attendu, son condensat, l'alphabet et la longueur maximale. `Main` et `MainTest` lisent ce fichier en UTF-8 et vérifient que chaque mot est retrouvé. Pour une recherche manuelle, passer uniquement le condensat, l'alphabet et la longueur maximale à `Main`.
+Le fichier [dictionnaire-sha256.csv](src/main/resources/dictionnaire-sha256.csv) contient douze exemples avec le mot attendu, son condensat, l'alphabet et la longueur maximale. Les quatre derniers cas ont 5 à 8 caractères et utilisent tous l'alphabet `abAB01!#@é`, qui réunit lettres, chiffres et caractères spéciaux. `Main` et `MainTest` lisent ce fichier en UTF-8 et vérifient que chaque mot est retrouvé. Pour une recherche manuelle, passer uniquement le condensat, l'alphabet et la longueur maximale à `Main`.
 
 ## Exécution
 
-Dans IntelliJ IDEA, lancer `fr.brex.Main` avec le bouton Run, sans arguments. Le programme cherche les huit mots du dictionnaire et affiche le temps de chaque recherche.
+Dans IntelliJ IDEA, lancer `fr.brex.Main` avec le bouton Run, sans arguments. Le programme cherche les douze mots du dictionnaire et affiche le temps de chaque recherche.
 
 Sous PowerShell, depuis ce dossier :
 
