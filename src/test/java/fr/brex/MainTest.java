@@ -1,21 +1,38 @@
 package fr.brex;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
 public class MainTest {
     public static void main(String[] args) throws Exception {
-        String abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-        if (!"abc".equals(Main.crack(abc, "abc", 3))) {
-            throw new AssertionError("Le mot abc doit être trouvé");
+        InputStream input = MainTest.class.getResourceAsStream("/dictionnaire-sha256.csv");
+        if (input == null) {
+            throw new AssertionError("Dictionnaire de test introuvable");
         }
-        if (Main.crack(abc, "ab", 3) != null) {
+
+        int count = 0;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            reader.readLine(); // En-tête du fichier CSV.
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] entry = line.split(";", -1);
+                if (entry.length != 4) {
+                    throw new AssertionError("Ligne CSV invalide : " + line);
+                }
+                String found = Main.crack(entry[1], entry[2], Integer.parseInt(entry[3]));
+                if (!entry[0].equals(found)) {
+                    throw new AssertionError("Mot attendu : " + entry[0] + ", trouvé : " + found);
+                }
+                count++;
+            }
+        }
+
+        String abcHash = "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD";
+        if (Main.crack(abcHash, "ab", 3) != null) {
             throw new AssertionError("Aucun mot ne doit être trouvé sans c");
         }
-        String accent = "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c";
-        if (!"é".equals(Main.crack(accent, "é", 1))) {
-            throw new AssertionError("Le condensat doit utiliser UTF-8");
-        }
-        String emoji = "f0443a342c5ef54783a111b51ba56c938e474c32324d90c3a60c9c8e3a37e2d9";
-        if (!"😀".equals(Main.crack(emoji, "😀", 1))) {
-            throw new AssertionError("L'alphabet doit accepter les caractères Unicode");
-        }
+        System.out.println(count + " cas valides");
     }
 }

@@ -64,7 +64,7 @@ public class Main {
 
         // ponytail: parcours séquentiel sans parallélisme ; mesurer cette base avant d'optimiser.
         for (int length = 1; length <= maxLength; length++) {
-            String found = search(new int[length], 0, symbols, target, sha256);
+            String found = enumerateAndCheck(new int[length], 0, symbols, target, sha256);
             if (found != null) {
                 return found;
             }
@@ -72,9 +72,9 @@ public class Main {
         return null;
     }
 
-    /** Remplit le candidat de gauche à droite ; à la dernière position, compare son SHA-256. */
-    private static String search(int[] candidate, int position, int[] symbols,
-                                 byte[] target, MessageDigest sha256) {
+    /** Énumère les combinaisons en remplissant le candidat de gauche à droite. */
+    private static String enumerateAndCheck(int[] candidate, int position, int[] symbols,
+                                            byte[] target, MessageDigest sha256) {
         if (position == candidate.length) {
             String word = new String(candidate, 0, candidate.length);
             // SHA-256 s'applique aux octets UTF-8 du mot, pas directement aux caractères Java.
@@ -85,7 +85,7 @@ public class Main {
         // Chaque appel fixe un symbole supplémentaire, jusqu'à former un mot complet.
         for (int symbol : symbols) {
             candidate[position] = symbol;
-            String found = search(candidate, position + 1, symbols, target, sha256);
+            String found = enumerateAndCheck(candidate, position + 1, symbols, target, sha256);
             if (found != null) {
                 return found;
             }

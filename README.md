@@ -2,6 +2,12 @@
 
 Le programme énumère les candidats de longueur 1 à la longueur maximale, dans l'ordre de l'alphabet fourni. Il calcule le SHA-256 des octets **UTF-8** de chaque candidat et s'arrête au premier condensat correspondant. Il utilise un seul fil d'exécution.
 
+## Énumération et dictionnaire de test
+
+La boucle de `crack` choisit successivement la longueur des candidats. La méthode récursive `enumerateAndCheck` essaie chaque symbole de l'alphabet à chaque position. Une fois le mot complet, elle calcule et compare son SHA-256. Il n'y a pas de type `enum` Java : l'alphabet est choisi à l'exécution.
+
+Le fichier [dictionnaire-sha256.csv](src/test/resources/dictionnaire-sha256.csv) contient huit exemples avec le mot attendu, son condensat, l'alphabet et la longueur maximale. Le contrôle `MainTest` lit ce fichier en UTF-8 et vérifie que chaque mot est retrouvé. Pour une recherche manuelle, passer uniquement le condensat, l'alphabet et la longueur maximale à `Main`.
+
 ## Exécution
 
 Dans IntelliJ IDEA, lancer `fr.brex.Main` avec le bouton Run, sans arguments. Le programme cherche alors `z3D`, puis `Sh3n`, et affiche le temps de chaque recherche.
