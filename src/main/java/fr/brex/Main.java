@@ -11,22 +11,29 @@ public class Main {
     public static void main(String[] args) throws NoSuchAlgorithmException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
-        if (args.length != 3) {
-            System.err.println("Usage : java fr.brex.Main <sha256-hex> <alphabet> <longueur-max>");
-            return;
-        }
-
         try {
-            int maxLength = Integer.parseInt(args[2]);
-            long start = System.nanoTime();
-            String result = crack(args[0], args[1], maxLength);
-            double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
-            System.out.printf("%s (%.3f s)%n",
-                    result == null ? "Aucune correspondance" : "Mot trouvé : " + result,
-                    seconds);
+            if (args.length == 0) {
+                String alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                run("A532CA5E11E2B06CCC911E0D962A4864CDB87DA05723F3A050A376D0F0895E63", alphabet, 3);
+                run("BD7D0EA8CF7ADE4A446BA4EFC46FD99071EC3F423770991AC51F70EC5A894DC7", alphabet, 4);
+            } else if (args.length == 3) {
+                run(args[0], args[1], Integer.parseInt(args[2]));
+            } else {
+                System.err.println("Usage : java fr.brex.Main [<sha256-hex> <alphabet> <longueur-max>]");
+            }
         } catch (IllegalArgumentException e) {
             System.err.println("Erreur : " + e.getMessage());
         }
+    }
+
+    private static void run(String targetHex, String alphabet, int maxLength)
+            throws NoSuchAlgorithmException {
+        long start = System.nanoTime();
+        String result = crack(targetHex, alphabet, maxLength);
+        double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
+        System.out.printf("%s (%.3f s)%n",
+                result == null ? "Aucune correspondance" : "Mot trouvé : " + result,
+                seconds);
     }
 
     static String crack(String targetHex, String alphabet, int maxLength)

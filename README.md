@@ -4,11 +4,14 @@ Le programme énumère les candidats de longueur 1 à la longueur maximale, dans
 
 ## Exécution
 
+Dans IntelliJ IDEA, lancer `fr.brex.Main` avec le bouton Run, sans arguments. Le programme cherche alors `z3D`, puis `Sh3n`, et affiche le temps de chaque recherche.
+
 Sous PowerShell, depuis ce dossier :
 
 ```powershell
 mvn -q test-compile
 java -cp 'target/classes;target/test-classes' fr.brex.MainTest
+java -cp target/classes fr.brex.Main
 $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 java -cp target/classes fr.brex.Main A532CA5E11E2B06CCC911E0D962A4864CDB87DA05723F3A050A376D0F0895E63 $alphabet 3
 java -cp target/classes fr.brex.Main BD7D0EA8CF7ADE4A446BA4EFC46FD99071EC3F423770991AC51F70EC5A894DC7 $alphabet 4
