@@ -1,5 +1,9 @@
 package fr.brex;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -9,16 +13,13 @@ import java.util.HexFormat;
 
 /** Recherche naïve d'un mot à partir de son condensat SHA-256. */
 public class Main {
-    /** Lance les deux cas du TP sans arguments, ou une recherche personnalisée avec trois arguments. */
-    public static void main(String[] args) throws NoSuchAlgorithmException {
+    /** Lance les huit cas du dictionnaire sans arguments, ou une recherche personnalisée. */
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
         try {
             if (args.length == 0) {
-                String alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-                // Condensats SHA-256 des deux mots du TP, recherchés dans cet ordre.
-                run("A532CA5E11E2B06CCC911E0D962A4864CDB87DA05723F3A050A376D0F0895E63", alphabet, 3);
-                run("BD7D0EA8CF7ADE4A446BA4EFC46FD99071EC3F423770991AC51F70EC5A894DC7", alphabet, 4);
+                runDictionary();
             } else if (args.length == 3) {
                 run(args[0], args[1], Integer.parseInt(args[2]));
             } else {
@@ -29,8 +30,33 @@ public class Main {
         }
     }
 
+    /** Lit les cas depuis les ressources et vérifie chaque mot retrouvé. */
+    private static void runDictionary() throws IOException, NoSuchAlgorithmException {
+        InputStream input = Main.class.getResourceAsStream("/dictionnaire-sha256.csv");
+        if (input == null) {
+            throw new IOException("Dictionnaire de test introuvable");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            reader.readLine(); // En-tête du CSV.
+            String line;
+            int count = 0;
+            while ((line = reader.readLine()) != null) {
+                String[] entry = line.split(";", -1);
+                if (entry.length != 4) {
+                    throw new IllegalArgumentException("Ligne CSV invalide : " + line);
+                }
+                System.out.printf("Cas %d : ", ++count);
+                String found = run(entry[1], entry[2], Integer.parseInt(entry[3]));
+                if (!entry[0].equals(found)) {
+                    throw new AssertionError("Mot attendu : " + entry[0] + ", trouvé : " + found);
+                }
+            }
+        }
+    }
+
     /** Mesure le temps de recherche et affiche le mot trouvé, s'il existe. */
-    private static void run(String targetHex, String alphabet, int maxLength)
+    private static String run(String targetHex, String alphabet, int maxLength)
             throws NoSuchAlgorithmException {
         long start = System.nanoTime();
         String result = crack(targetHex, alphabet, maxLength);
@@ -38,6 +64,7 @@ public class Main {
         System.out.printf("%s (%.3f s)%n",
                 result == null ? "Aucune correspondance" : "Mot trouvé : " + result,
                 seconds);
+        return result;
     }
 
     /**
